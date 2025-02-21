@@ -34,7 +34,42 @@ class CausalSelfAttention(nn.Module):
   def attention(self, key, query, value, attention_mask):
 
     ### YOUR CODE HERE
-    raise NotImplementedError
+
+    # input vectors of size [batch size, num_attention_heads, seq_len, attention_head_size]
+    b, h, t, d = key.size()
+
+    # attention(query, key, value) = softmax(qkt/sqrt(dk))V
+
+    # compute attention scores s = QKT
+    attention_scores = torch.matmul(query, key.transpose(-1, -2)) # shape (b, h, seq_len, seq_len)
+
+    # scale scores by sqrt dk
+    attention_scores = attention_scores / (d**0.5) # shape (b, h, seq_len, attn_head_size)
+
+    # apply upper triangular mask (torch.triu) to attention weights before the softmax
+    mask = torch.triu(torch.full((t, t), float('-inf'), device=query.device), diagonal=1) # shape (T, T)
+    mask = mask.unsqueeze(0).unsqueeze(0) # shape (1, 1, T, T)
+    attention_scores += mask
+
+    if attention_mask is not None:
+      attention_mask = attention_mask.to(dtype=attention_scores.dtype) 
+      # attention_mask *= float('-inf')
+      # attention_scores += attention_mask
+      attention_mask = attention_mask.masked_fill(attention_mask == -10000, float('-inf'))
+      attention_scores += attention_mask
+      # attention_scores = attention_scores.masked_fill(attention_mask == 0, float('-inf'))
+
+    # apply softmax across key
+    attention_prob_dist = nn.functional.softmax(attention_scores, dim=-1)
+    attention_prob_dist = self.dropout(attention_prob_dist)
+
+    # output = A*V
+    output = torch.matmul(attention_prob_dist, value) # shape (b, h, seq_len, attn_head_size)
+
+    # back to original shape (b, seq_len, hidden_size = h * attn_head_size)
+    output = torch.reshape(output, (b, t, -1))
+
+    return output
 
 
   def forward(self, hidden_states, attention_mask):

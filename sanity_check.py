@@ -24,6 +24,11 @@ def test_gpt2(model_size='gpt2'):
   outputs['last_hidden_state'] = outputs['last_hidden_state'] * att_mask
   openai_outputs *= att_mask
 
+  # my line
+  assert outputs['last_hidden_state'].shape == openai_outputs.shape
+  print(torch.max(torch.abs(outputs['last_hidden_state'] - openai_outputs)))
+  print(outputs['last_hidden_state'][0, :5, :5]) 
+  print(openai_outputs[0, :5, :5])
   assert torch.allclose(outputs['last_hidden_state'], openai_outputs, atol=1e-1, rtol=1e-2)
 
   print("Your GPT2 implementation is correct!")

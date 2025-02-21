@@ -30,8 +30,17 @@ class GPT2Layer(nn.Module):
         IN THIS FUNCTION.
     """
     ### YOUR CODE HERE
-    raise NotImplementedError
 
+    # pass result through dense layer
+    output = dense_layer(output)
+
+    # apply dropout
+    output = dropout(output)
+
+    # add input of layer to output after transformation
+    output = output + input
+
+    return output
 
   def forward(self, hidden_states, attention_mask):
     """
@@ -43,5 +52,29 @@ class GPT2Layer(nn.Module):
     """
 
     ### YOUR CODE HERE
-    raise NotImplementedError
+
+    # layer normalization before attention
+    attention_input = self.attention_layer_norm(hidden_states)
+
+    # attention layer - get attenton output
+    attention_output = self.self_attention(attention_input, attention_mask)
+
+    # apply residual connection and dropout add function
+    # hidden_states shape (batch size, sequence length, hidden size)
+    attention_output = self.add(hidden_states, attention_output, self.attention_dense, self.attention_dropout)
+
+    ff_input = attention_output
+    # feed-forward network
+    # expand hidden size to intermediate size
+    ff_output = self.interm_dense(ff_input)
+    # apply GELU activation
+    ff_output = self.interm_af(ff_output)
+
+    # # apply residual connection and dropout add function
+    ff_output = self.add(attention_output, ff_output, self.out_dense, self.out_dropout)
+
+     # layer normalization after residual connection
+    ff_output = self.out_layer_norm(ff_output)
+
+    return ff_output
 
